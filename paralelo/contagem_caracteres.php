@@ -31,31 +31,40 @@ function dividirArquivo(string $caminhoArquivo, string $diretorioTemporario, int
 
 function contagemCaracteres(string $diretorio, int $quantidadeThreads): int
 {
-    $runtime = new parallel\Runtime();
-    $future = $runtime->run(function () use ($diretorio, $quantidadeThreads) {
-        $count = 0;
-        echo PHP_EOL . "Iniciando thread." . PHP_EOL;
+    $runtimes = [];
+    $futures = [];
 
-        for ($i = 1; $i <= $quantidadeThreads; $i++) {
-            echo "*";
-            $handle = fopen($diretorio . '/pedaco_' . $i . '.txt', 'rb');
-            $texto = fread($handle, 1048576); //1Mb
-            $count += strlen($texto);
-        }
+    for ($i = 1; $i <= $quantidadeThreads; $i++) {
+        $runtimes[$i] = new parallel\Runtime();
+        $futures[$i] = $runtimes[$i]->run(
+            function ($diretorio, $i) {
+                echo PHP_EOL . "Iniciando thread {$i}" . PHP_EOL;
 
-        return $count;
-    });
+                $handle = fopen($diretorio . '/pedaco_' . $i . '.txt', 'rb');
+                $texto = fread($handle, 1048576); //1Mb
+                $count = strlen($texto);
 
-    for ($i = 0; $i < $quantidadeThreads; $i++) {
-        echo ".";
+                echo PHP_EOL . "Fim thread {$i} após contar {$count}" . PHP_EOL;
+
+                return $count;
+            },
+            [
+                $diretorio,
+                $i,
+            ]
+        );
     }
 
-    return $future->value();
+    return array_reduce(
+        $futures,
+        static fn(int $total, parallel\Future $future) => $total + $future->value(),
+        0
+    );
 }
 
 function removeArquivosTemporarios(string $diretorioTemporario)
 {
-    array_map('unlink',  glob($diretorioTemporario . "/*"));
+    array_map('unlink', glob($diretorioTemporario . "/*"));
 }
 
 function run(string $caminhoArquivo, int $workers, string $diretorioTemporario): void
@@ -71,4 +80,3 @@ function run(string $caminhoArquivo, int $workers, string $diretorioTemporario):
 }
 
 run($caminhoArquivo, $workers, $diretorioTemporario);
-
