@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-$socket = $argv[1] ?: "";
+$socket = $argv[1] ?: '';
 
 function run(string $socket)
 {
@@ -10,7 +10,7 @@ function run(string $socket)
     echo "[{$socket}] Aguardando conexões..." . PHP_EOL;
 
     if ($server === false) {
-        throw new \UnexpectedValueException(
+        throw new UnexpectedValueException(
             "Não foi possível a conexão com o socket: {$errorNum} - {$errorMsg}" . PHP_EOL
         );
     }

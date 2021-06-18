@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 $workersHosts = ['worker1:8001', 'worker2:8002'];
-$caminhoArquivo = __DIR__ . "/texto.txt";
-$diretorioTemporario = __DIR__ . "/tmp";
+$caminhoArquivo = __DIR__ . '/texto.txt';
+$diretorioTemporario = __DIR__ . '/tmp';
 
 function dividirArquivo(string $caminhoArquivo, string $diretorioTemporario, int $quantidade): void
 {
@@ -31,53 +31,62 @@ function dividirArquivo(string $caminhoArquivo, string $diretorioTemporario, int
 
 function enviaParaWorkers(string $diretorio, array $workersHosts): int
 {
+    $runtimes = [];
     $futures = [];
-    $resultado = 0;
 
     foreach ($workersHosts as $key => $worker) {
-        $key = $key + 1; // pequena gambiarra pra normalizar o nomw do worker
+        $workerNum = $key + 1; // pequena gambiarra pra normalizar o nomw do worker
 
-        $runtime = new parallel\Runtime();
-        $futures[] = $runtime->run(function () use ($key, $worker, $diretorio) {
-            echo "[Thread {$key}] Iniciando conexão com worker{$key}..." . PHP_EOL;
-            $client = stream_socket_client("tcp://{$worker}", $errorNum, $errorMsg, 10);
+        $runtimes[$key] = new parallel\Runtime();
+        $futures[$key] = $runtimes[$key]->run(
+            function ($workerNum, $worker, $diretorio) {
+                echo "[Thread {$workerNum}] Iniciando conexão com worker{$workerNum}..." . PHP_EOL;
+                $client = stream_socket_client("tcp://{$worker}", $errorNum, $errorMsg, 10);
 
-            if ($client == false) {
-                throw new \UnexpectedValueException("[Thread {$key}] Falha ao conectar ao worker{$key}: {$errorNum} - {$errorMsg}" . PHP_EOL);
-            }
+                if ($client === false) {
+                    throw new UnexpectedValueException(
+                        "[Thread {$workerNum}] Falha ao conectar ao worker{$workerNum}: {$errorNum} - {$errorMsg}" . PHP_EOL
+                    );
+                }
 
-            $arquivo = $diretorio . '/pedaco_' . $key . '.txt';
-            echo "[Thread {$key}] Lendo arquivo {$arquivo}..." . PHP_EOL;
-            $handle = fopen($arquivo, 'rb');
-            $texto = fread($handle, 1048576); //1Mb
+                $arquivo = $diretorio . '/pedaco_' . $workerNum . '.txt';
+                echo "[Thread {$workerNum}] Lendo arquivo {$arquivo}..." . PHP_EOL;
+                $handle = fopen($arquivo, 'rb');
+                $texto = fread($handle, 1048576); //1Mb
 
-            echo "[Thread {$key}] Enviando dados ao worker..." . PHP_EOL;
-            fwrite($client, base64_encode($texto));
-            $resultado = stream_get_contents($client);
-            echo "[Thread {$key}] Resultado recebido!" . PHP_EOL;
+                echo "[Thread {$workerNum}] Enviando dados ao worker..." . PHP_EOL;
+                fwrite($client, base64_encode($texto));
+                $resultado = stream_get_contents($client);
+                echo "[Thread {$workerNum}] Resultado recebido!" . PHP_EOL;
 
-            fclose($client);
-            echo "[Thread {$key}] Conexão com worker{$key} encerrada." . PHP_EOL;
+                fclose($client);
+                echo "[Thread {$workerNum}] Conexão com worker{$workerNum} encerrada." . PHP_EOL;
 
-            return $resultado;
-        });
+                return $resultado;
+            },
+            [
+                $workerNum,
+                $worker,
+                $diretorio,
+            ]
+        );
     }
 
-    foreach ($futures as $future) {
-        $resultado += $future->value();
-    }
-
-    return $resultado;
+    return array_reduce(
+        $futures,
+        static fn(int $total, parallel\Future $future) => $total + $future->value(),
+        0
+    );
 }
 
 function removeArquivosTemporarios(string $diretorioTemporario)
 {
-    array_map('unlink',  glob($diretorioTemporario . "/*"));
+    array_map('unlink', glob($diretorioTemporario . "/*"));
 }
 
 function run(string $caminhoArquivo, $workersHosts, string $diretorioTemporario): void
 {
-    echo PHP_EOL . "Iniciando client.php" . PHP_EOL;
+    echo PHP_EOL . 'Iniciando client.php' . PHP_EOL;
     echo "Arquivo para contar caracteres: {$caminhoArquivo}" . PHP_EOL;
 
     dividirArquivo($caminhoArquivo, $diretorioTemporario, count($workersHosts));
