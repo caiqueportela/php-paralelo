@@ -6,24 +6,27 @@ services:
       context: ../docker/php/
     command: php client.php
     ports:
-    - 80:8000
+      - 8000:8000
     volumes:
-    - ./:/var/www
+      - ./:/var/www
+    depends_on:
+      - worker1
+      - worker2
 
   worker1:
     build:
       context: ../docker/php/
     command: php worker.php worker1:8001
     ports:
-    - 8001:8000
+      - 8001:8000
     volumes:
-    - ./:/var/www
+      - ./:/var/www
 
   worker2:
     build:
       context: ../docker/php/
     command: php worker.php worker2:8002
     ports:
-    - 8002:8000
+      - 8002:8000
     volumes:
-    - ./:/var/www
+      - ./:/var/www

@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-sleep(3); // pequena gambiarra pra garantir que os workers iniciem antes do client rodar
-
 $workersHosts = ['worker1:8001', 'worker2:8002'];
 $caminhoArquivo = __DIR__ . "/texto.txt";
 $diretorioTemporario = __DIR__ . "/tmp";
