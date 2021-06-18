@@ -26,7 +26,7 @@ docker-compose exec php php hello_world.php
 Para rodar o código de processamento paralelo:
 
 ```shell script
-docker-compose exec php php paralelo/contage_caracteres.php [workers=4]
+docker-compose exec php php paralelo/contagem_caracteres.php [workers=4]
 ```
 
 Para rodar o código de processamento distribuído: 
